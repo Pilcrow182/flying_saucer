@@ -6,7 +6,7 @@ version 0.9, © 2018 by Pilcrow182
 
 ### Screenshot:
 
-![image](https://raw.githubusercontent.com/Pilcrow182/flying_saucer/master/_screenshot.png)
+![image](https://raw.githubusercontent.com/Pilcrow182/flying_saucer/master/screenshot.png)
 
 -------------------------------------------------------------------------------
 
@@ -30,7 +30,7 @@ Wielding the Saucer and clicking the left mouse button (to 'use' the item) sets 
 
 ### Depends:
 
-None (though the [crafting recipe](https://raw.githubusercontent.com/Pilcrow182/flying_saucer/master/_crafting.png) uses items from Default)
+None (though the [crafting recipe](https://raw.githubusercontent.com/Pilcrow182/flying_saucer/master/crafting.png) uses items from Default)
 
 -------------------------------------------------------------------------------
 
