@@ -44,7 +44,7 @@ local activate_flying_saucer = function(player, name)
 		visual = "mesh",
 		mesh = "flying_saucer.x",
 		textures = {"flying_saucer.png"},
-		collisionbox = {-1.49,  0.00, -1.49,  1.49, 1.99,  1.49},
+		collisionbox = {-1.49,  0.00, -1.49,  1.49, 1.98,  1.49},
 	})
 	if pp and pp.disable then pp.disable[name] = true end
 end

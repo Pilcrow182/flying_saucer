@@ -18,7 +18,7 @@ version 0.9, © 2018 by Pilcrow182
 
 This mod adds a flying saucer vehicle to the Minetest game, using the same basic concept as the [cars mod](https://forum.minetest.net/viewtopic.php?t=13988) by cheapie: it changes the player character's model and movement ability/controls rather than spawning a new entity and attaching the player to it. Theoretically, this means less lag. This mod was originally intended to become a drop-in replacement for the [helicopter mod](https://forum.minetest.net/viewtopic.php?f=11&t=6183) by Pavel_S, but was later changed to a flying saucer. The 3D model was taken from Zeg9's [UFOs mod](https://forum.minetest.net/viewtopic.php?f=11&t=4086), though none of our code or textures are shared, and our controls are nothing alike.
 
-Please report any issues at the [Flying Saucer GitHub page](https://github.com/Pilcrow182/flying_saucer).
+Please report any issues at the [Flying Saucer GitHub page](https://github.com/Pilcrow182/flying_saucer) or the [Release thread on the Minetest forums](https://forum.minetest.net/viewtopic.php?f=9&t=21330).
 
 -------------------------------------------------------------------------------
 
