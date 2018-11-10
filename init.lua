@@ -108,7 +108,7 @@ end)
 
 minetest.register_on_respawnplayer(function(player)
 	local name = player:get_player_name()
-	if flying_saucer.storage[name].physics then
+	if flying_saucer.storage[name] and flying_saucer.storage[name].physics then
 		deactivate_flying_saucer(player, name)
 	end
 end)
