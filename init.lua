@@ -20,7 +20,10 @@
 
 flying_saucer = {}
 
-flying_saucer.speed = minetest.settings:get("flying_saucer_speed") or 8
+flying_saucer.delay = tonumber(minetest.settings:get("flying_saucer_delay") or 0.2)
+minetest.settings:set("flying_saucer_delay", flying_saucer.delay)
+
+flying_saucer.speed = tonumber(minetest.settings:get("flying_saucer_speed") or 8)
 minetest.settings:set("flying_saucer_speed", flying_saucer.speed)
 
 flying_saucer.passive_stop = minetest.settings:get_bool("flying_saucer_passive_stop", false)
@@ -28,9 +31,12 @@ minetest.settings:set_bool("flying_saucer_passive_stop", flying_saucer.passive_s
 
 flying_saucer.storage = {}
 
+local DEBUG = false
 local debug_msg = function(message)
-	minetest.chat_send_all(message)
-	minetest.log("action", message)
+	if DEBUG then
+		minetest.chat_send_all(message)
+		minetest.log("action", message)
+	end
 end
 
 local activate_flying_saucer = function(player, name)
@@ -74,33 +80,45 @@ minetest.register_entity("flying_saucer:stopper_entity", {
 
 local timer = 0
 minetest.register_globalstep(function(dtime)
+	local delay = flying_saucer.delay
 	timer = timer + dtime
-	if timer >= 0.2 then
+	if timer >= delay then
 		timer = 0
 		for name,_ in pairs(flying_saucer.storage) do
 			local player = minetest.get_player_by_name(name)
 			if player then
+				local saucer_speed = flying_saucer.speed
 				local ctrl = player:get_player_control()
 				local velocity = player:get_player_velocity()
-				local saucer_speed = tonumber(flying_saucer.speed)
 				local physics = {speed = saucer_speed/4, jump = 0, gravity = 0, sneak = false, sneak_glitch = false}
 
-				if (ctrl.jump or (flying_saucer.storage[name].state == "ascending" and velocity.y ~= 0)) and not (ctrl.sneak or ctrl.aux1) then
+				if (ctrl.jump or (flying_saucer.storage[name].state == "ascending" and velocity.y > 0 and not flying_saucer.passive_stop)) and not (ctrl.sneak or ctrl.aux1) then
 					flying_saucer.storage[name].state = "ascending"
-					physics.gravity = -(saucer_speed-velocity.y)/saucer_speed
+					physics.gravity = -(math.min(saucer_speed, math.max(0, saucer_speed-velocity.y))/saucer_speed)*(1-math.min(0.7, math.max(0, delay)))
+					debug_msg("boosting "..name.."'s upward speed by "..physics.gravity)
 					player:set_physics_override(physics)
-				elseif (ctrl.sneak or (flying_saucer.storage[name].state == "descending" and velocity.y ~= 0)) and not (ctrl.jump or ctrl.aux1) then
+
+				elseif (ctrl.sneak or (flying_saucer.storage[name].state == "descending" and velocity.y < 0 and not flying_saucer.passive_stop)) and not (ctrl.jump or ctrl.aux1) then
 					flying_saucer.storage[name].state = "descending"
-					physics.gravity =  (saucer_speed+velocity.y)/saucer_speed
+					physics.gravity =  (math.min(saucer_speed, math.max(0, saucer_speed+velocity.y))/saucer_speed)*(1-math.min(0.7, math.max(0, delay)))
+					debug_msg("boosting "..name.."'s downward speed by "..physics.gravity)
 					player:set_physics_override(physics)
+
 				elseif ((ctrl.aux1 or flying_saucer.passive_stop or velocity.y == 0) and flying_saucer.storage[name].state ~= "idle") or not flying_saucer.storage[name].state then
+					debug_msg("stopping player "..name)
+					stopping_player = name
+					minetest.add_entity(player:get_pos(), "flying_saucer:stopper_entity")
+					player:set_physics_override(physics)
+
+				elseif velocity.y > math.max(saucer_speed, 14) or velocity.y < -math.max(saucer_speed, 14) then
+					minetest.chat_send_player(name, "Flying Saucer to "..name..": unsafe speeds detected; halting vertical movement.")
 					stopping_player = name
 					minetest.add_entity(player:get_pos(), "flying_saucer:stopper_entity")
 					player:set_physics_override(physics)
 				end
 
 				local state = flying_saucer.storage[name].state or "idle"
--- 				debug_msg("player '"..name.."' is "..state.." (physics="..minetest.pos_to_string({x=physics.speed, y=physics.jump,z=physics.gravity})..", velocity="..minetest.pos_to_string(velocity)..")...")
+				debug_msg("player '"..name.."' is "..state.." (physics="..minetest.pos_to_string({x=physics.speed, y=physics.jump,z=physics.gravity})..", velocity="..minetest.pos_to_string(velocity)..")...")
 			end
 		end
 	end
