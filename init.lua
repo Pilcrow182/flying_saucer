@@ -23,7 +23,7 @@ flying_saucer = {}
 flying_saucer.delay = tonumber(minetest.settings:get("flying_saucer_delay") or 0.2)
 minetest.settings:set("flying_saucer_delay", flying_saucer.delay)
 
-flying_saucer.speed = tonumber(minetest.settings:get("flying_saucer_speed") or 8)
+flying_saucer.speed = tonumber(minetest.settings:get("flying_saucer_speed") or 10)
 minetest.settings:set("flying_saucer_speed", flying_saucer.speed)
 
 flying_saucer.passive_stop = minetest.settings:get_bool("flying_saucer_passive_stop", false)
@@ -39,12 +39,33 @@ local debug_msg = function(message)
 	end
 end
 
+local bubble_tiles = (DEBUG and {"flying_saucer_bubble.png"}) or nil
+local bubble_drawtype = (DEBUG and "allfaces_optional") or "airlike"
+minetest.register_node("flying_saucer:bubble", {
+	description = "Climbable Air",
+	inventory_image = "flying_saucer_bubble.png",
+	wield_image = "flying_saucer_bubble.png",
+	tiles = bubble_tiles,
+	drawtype = bubble_drawtype,
+	paramtype = "light",
+	sunlight_propagates = true,
+	walkable = false,
+	climbable = true,
+	pointable = false,
+	diggable = false,
+	buildable_to = true,
+	floodable = true,
+	air_equivalent = true,
+	drop = "",
+	groups = {not_in_creative_inventory=1},
+})
+
 local activate_flying_saucer = function(player, name)
 	minetest.chat_send_player(name, "Saucer mode enabled")
 	flying_saucer.storage[name] = {}
 	flying_saucer.storage[name].physics = player:get_physics_override()
 	flying_saucer.storage[name].properties = player:get_properties()
-	player:set_physics_override({speed = 2, jump = 0, gravity = 0, sneak = false, sneak_glitch = false})
+	player:set_physics_override({speed = flying_saucer.speed/4, jump = 0, gravity = 0, sneak = false, sneak_glitch = false})
 	player:set_properties({
 		visual_size = {x = 1, y = 1},
 		visual = "mesh",
@@ -78,6 +99,15 @@ minetest.register_entity("flying_saucer:stopper_entity", {
 	end,
 })
 
+local bubble = {size = {y = 3, x = 3, z = 3}, data = {}}
+for x = 1, bubble.size.x do
+	for y = 1, bubble.size.y do
+		for z = 1, bubble.size.z do
+			table.insert(bubble.data, { name = "flying_saucer:bubble" })
+		end
+	end
+end
+
 local timer = 0
 minetest.register_globalstep(function(dtime)
 	local delay = flying_saucer.delay
@@ -87,38 +117,28 @@ minetest.register_globalstep(function(dtime)
 		for name,_ in pairs(flying_saucer.storage) do
 			local player = minetest.get_player_by_name(name)
 			if player then
-				local saucer_speed = flying_saucer.speed
+				local pos = player:get_pos()
 				local ctrl = player:get_player_control()
 				local velocity = player:get_player_velocity()
-				local physics = {speed = saucer_speed/4, jump = 0, gravity = 0, sneak = false, sneak_glitch = false}
-
-				if (ctrl.jump or (flying_saucer.storage[name].state == "ascending" and velocity.y > 0 and not flying_saucer.passive_stop)) and not (ctrl.sneak or ctrl.aux1) then
-					flying_saucer.storage[name].state = "ascending"
-					physics.gravity = -(math.min(saucer_speed, math.max(0, saucer_speed-velocity.y))/saucer_speed)*(1-math.min(0.7, math.max(0, delay)))
-					debug_msg("boosting "..name.."'s upward speed by "..physics.gravity)
-					player:set_physics_override(physics)
-
-				elseif (ctrl.sneak or (flying_saucer.storage[name].state == "descending" and velocity.y < 0 and not flying_saucer.passive_stop)) and not (ctrl.jump or ctrl.aux1) then
-					flying_saucer.storage[name].state = "descending"
-					physics.gravity =  (math.min(saucer_speed, math.max(0, saucer_speed+velocity.y))/saucer_speed)*(1-math.min(0.7, math.max(0, delay)))
-					debug_msg("boosting "..name.."'s downward speed by "..physics.gravity)
-					player:set_physics_override(physics)
-
-				elseif ((ctrl.aux1 or flying_saucer.passive_stop or velocity.y == 0) and flying_saucer.storage[name].state ~= "idle") or not flying_saucer.storage[name].state then
-					debug_msg("stopping player "..name)
-					stopping_player = name
-					minetest.add_entity(player:get_pos(), "flying_saucer:stopper_entity")
-					player:set_physics_override(physics)
-
-				elseif velocity.y > math.max(saucer_speed, 14) or velocity.y < -math.max(saucer_speed, 14) then
-					minetest.chat_send_player(name, "Flying Saucer to "..name..": unsafe speeds detected; halting vertical movement.")
-					stopping_player = name
-					minetest.add_entity(player:get_pos(), "flying_saucer:stopper_entity")
-					player:set_physics_override(physics)
-				end
+				local physics = player:get_physics_override()
 
 				local state = flying_saucer.storage[name].state or "idle"
 				debug_msg("player '"..name.."' is "..state.." (physics="..minetest.pos_to_string({x=physics.speed, y=physics.jump,z=physics.gravity})..", velocity="..minetest.pos_to_string(velocity)..")...")
+
+				if velocity.y < -flying_saucer.speed then
+					minetest.chat_send_player(name, "Flying Saucer to "..name..": unsafe speeds detected; halting vertical movement.")
+					stopping_player = name
+					minetest.add_entity(player:get_pos(), "flying_saucer:stopper_entity")
+				elseif (ctrl.aux1 or (flying_saucer.passive_stop and velocity.y ~= 0) or (velocity.y == 0 and flying_saucer.storage[name].state ~= "idle")) and not (ctrl.jump or ctrl.sneak) then
+					flying_saucer.storage[name].state = "idle"
+					minetest.place_schematic({x = pos.x - 1, y = pos.y - 0.5, z = pos.z - 1}, bubble, 0, nil, false)
+				elseif ctrl.jump and (flying_saucer.storage[name].state ~= "ascending" or velocity.y < flying_saucer.speed*0.75) and not ctrl.sneak then
+					flying_saucer.storage[name].state = "ascending"
+					minetest.place_schematic({x = pos.x - 1, y = pos.y - 0.5, z = pos.z - 1}, bubble, 0, nil, false)
+				elseif ctrl.sneak and (flying_saucer.storage[name].state ~= "descending" or velocity.y > -flying_saucer.speed*0.75) then
+					flying_saucer.storage[name].state = "descending"
+					minetest.place_schematic({x = pos.x - 1, y = pos.y - 0.5, z = pos.z - 1}, bubble, 0, nil, false)
+				end
 			end
 		end
 	end
@@ -155,4 +175,19 @@ minetest.register_craft({
 	}
 })
 
+minetest.register_abm{
+        label = "bubble cleanup",
+	nodenames = {"flying_saucer:bubble"},
+	interval = 1,
+	chance = 1,
+	action = function(pos)
+		local despawn = true
+		for _,obj in ipairs(minetest.get_objects_inside_radius(pos, 3)) do
+			if obj:is_player() and flying_saucer.storage[obj:get_player_name()] then despawn = false end
+		end
+		if despawn then minetest.remove_node(pos) end
+	end
+}
+
 dofile(minetest.get_modpath(minetest.get_current_modname()).."/compat.lua")
+
